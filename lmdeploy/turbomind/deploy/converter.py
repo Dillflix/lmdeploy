@@ -87,9 +87,8 @@ def get_output_model_registered_name_and_config(model_path: str, model_format: s
 
     expert_weight_type = weight_type
 
-    # Experts-only quantization is currently only expected for gpt-oss mxfp4.
-    # Keep dense/attention weights quantized for awq/gptq models.
-    if model_arch == 'GptOssForCausalLM' and model_format == 'mxfp4':
+    # ONLY experts are quantized, attention weights remain in native dtype
+    if model_arch in ('GptOssForCausalLM', 'MiniMaxM2ForCausalLM'):
         weight_type = dtype
 
     config.model_config.model_arch = model_arch
@@ -161,13 +160,19 @@ def get_tm_model(model_path,
         engine_config.model_format = quant_method
         group_size = _group_size
 
-    if engine_config.model_format in ['awq', 'gptq', 'compressed-tensors']:
+    if engine_config.model_format in ['awq', 'gptq']:
         # Compatible to awq models that are quantized by lmdeploy (<=v0.3.0)
         if not group_size:
             group_size = 128
         assert group_size == 128, (f'model format is "{engine_config.model_format}" '
                                    f'but group_size is {group_size}. Currently, only 128 '
                                    'is supported')
+    elif engine_config.model_format == 'compressed-tensors':
+        if not group_size:
+            group_size = 128
+        assert group_size in [32, 128], (f'model format is "{engine_config.model_format}" '
+                                         f'but group_size is {group_size}. Currently, only '
+                                         '32 and 128 are supported')
 
     input_model_name = get_input_model_registered_name(model_path, engine_config.model_format)
     input_policy = get_input_policy(engine_config.model_format)
