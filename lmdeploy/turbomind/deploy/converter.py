@@ -87,8 +87,9 @@ def get_output_model_registered_name_and_config(model_path: str, model_format: s
 
     expert_weight_type = weight_type
 
-    # ONLY experts are in mxfp4
-    if model_arch == 'GptOssForCausalLM':
+    # Experts-only quantization is currently only expected for gpt-oss mxfp4.
+    # Keep dense/attention weights quantized for awq/gptq models.
+    if model_arch == 'GptOssForCausalLM' and model_format == 'mxfp4':
         weight_type = dtype
 
     config.model_config.model_arch = model_arch
